@@ -1,30 +1,35 @@
 import os
-from itertools import product
+from csv import DictWriter
+
 from dotenv import load_dotenv
 
-from utils import get_suggestions
-from constants import *
+from src.constants import *
+from src.utils import parse, get_time
 
 
 def main():
     queries_filename = os.getenv('queries_filename', 'queries.txt')
     symbols_filename = os.getenv('symbols_filename', 'symbols.txt')
     output_filename = os.getenv('output_filename', 'output.csv')
+    with open('logs.txt', 'w', encoding='utf-8') as f:
+        print(f'[{get_time()}] The script has started', file=f)
     with open(queries_filename, encoding='utf-8') as f:
         queries = [x.strip() for x in f]
-    mode = None
-    while mode is None:
+    if not queries:
+        raise Exception('Нет запросов')
+    with open(symbols_filename, encoding='utf-8') as f:
+        symbols = f.read().strip()
+    repeats = None
+    while repeats is None:
         try:
-            mode = int(input('Выберите вариант подстановок:\n1 – подставить только в начало\n'
-                             '2 – подставить только в конец'
-                             '\n3 – подставить везде (начало, после каждого слова, конец)\n'))
-            assert 1 <= mode <= 3
+            repeats = int(input('Введите длину перебора: '))
+            assert 0 <= repeats <= MAX_REPEATS
+            break
         except (ValueError, AssertionError):
-            print('Должно быть введено число 1, 2 или 3')
-    # print(f'Total count: {len(queries)}')
-    # for i in range(len(queries)):
-    #     count = len(get_suggestions(API_URL, queries[i], **DEFAULT_API_PARAMS))
-    #     print(f'{i + 1}. {count}')
+            print(f'Должно быть введено целое число от 0 до {MAX_REPEATS}')
+    with open(output_filename, 'w', newline='', encoding='utf-8') as f:
+        DictWriter(f, FIELDNAMES, delimiter=DELIMITER).writeheader()
+    parse(queries, symbols, repeats, [], 0, API_URL, output_filename, DEFAULT_API_PARAMS)
 
 
 if __name__ == '__main__':
