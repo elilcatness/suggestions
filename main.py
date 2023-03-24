@@ -1,10 +1,11 @@
 import os
 from csv import DictWriter
+from time import time
 
 from dotenv import load_dotenv
 
 from src.constants import *
-from src.utils import parse, get_time
+from src.utils import log, get_time, get_time_from_secs, process
 
 
 def main():
@@ -29,7 +30,14 @@ def main():
             print(f'Должно быть введено целое число от 0 до {MAX_REPEATS}')
     with open(output_filename, 'w', newline='', encoding='utf-8') as f:
         DictWriter(f, FIELDNAMES, delimiter=DELIMITER).writeheader()
-    parse(queries, symbols, repeats, [], 0, API_URL, output_filename, DEFAULT_API_PARAMS)
+    used = []
+    processed_total = 0
+    st_time = time()
+    while queries:
+        queries, processed_total = process(queries, symbols, repeats, used, processed_total,
+                                           API_URL, output_filename, DEFAULT_API_PARAMS)
+    log(f'Completed in {get_time_from_secs(int(time() - st_time))}')
+    log(f'Totally processed: {processed_total}')
 
 
 if __name__ == '__main__':

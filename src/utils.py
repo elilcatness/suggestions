@@ -18,6 +18,10 @@ def get_time():
     return datetime.now().strftime('%H:%M:%S')
 
 
+def get_time_from_secs(secs: int):
+    return ':'.join([str(n).rjust(2, '0') for n in [secs // 3600, secs // 60 % 60, secs % 60]])
+
+
 def get_tree(session, url: str, **params):
     r = session.get(url, params=params)
     if r.status_code != 200:
@@ -59,14 +63,13 @@ def log(message: str, logs_filename: str = 'logs.txt'):
         print(f'[{t}] {message}', file=f)
 
 
-def parse(queries: list, symbols: str, repeats: int, used: list, processed_total: int,
-          api_url: str, output_filename: str, api_params: dict = None):
+def process(queries: list, symbols: str, repeats: int, used: list, processed_total: int,
+            api_url: str, output_filename: str, api_params: dict = None):
     with tor_requests_session() as session:
         try:
             ip = get_ip(session)
         except (ConnectTimeout, ReadTimeout):
-            return parse(queries, symbols, repeats, used, processed_total, api_url, output_filename,
-                         api_params)
+            return queries, processed_total
         log(f'Starting with IP: {ip}')
         processed = 0
         while queries:
@@ -91,11 +94,11 @@ def parse(queries: list, symbols: str, repeats: int, used: list, processed_total
                     queries.insert(0, q)  # проверить!
                     processed -= 1
                     processed_total -= 1
-                    return parse(queries, symbols, repeats, used, processed_total,
-                                 api_url, output_filename, api_params)
+                    return queries, processed_total
                 with open(output_filename, 'a', newline='', encoding='utf-8') as f:
                     DictWriter(f, FIELDNAMES, delimiter=DELIMITER).writerows(
                         [{'Query': q, 'Suggestion': s} for s in suggestions])
                 queries.extend(suggestions)
                 queries.append(get_combinations(q, symbols, repeats))
                 used.append(q)
+        return queries, processed_total
