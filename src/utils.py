@@ -34,7 +34,7 @@ def get_suggestions(session, url: str, q: str, **params):
     if isinstance(tree, int):
         return tree
     # noinspection PyUnresolvedReferences
-    return [x for x in tree.xpath('//suggestion/@data') if x != q]
+    return [x.strip() for x in tree.xpath('//suggestion/@data') if x != q]
 
 
 def get_combinations(text: str, symbols: str, repeats: int):  # mode: str = 'before'
@@ -65,40 +65,46 @@ def log(message: str, logs_filename: str = 'logs.txt'):
 
 def process(queries: list, symbols: str, repeats: int, used: list, processed_total: int,
             api_url: str, output_filename: str, api_params: dict = None):
-    with tor_requests_session() as session:
-        try:
-            ip = get_ip(session)
-        except (ConnectTimeout, ReadTimeout):
+    try:
+        with tor_requests_session() as session:
+            try:
+                ip = get_ip(session)
+            except (ConnectTimeout, ReadTimeout):
+                return queries, processed_total
+            log(f'Starting with IP: {ip}')
+            processed = 0
+            while queries:
+                queued_query = queries.pop(0)
+                if isinstance(queued_query, str):
+                    queued_query = [queued_query]
+                for q in queued_query:
+                    processed += 1
+                    processed_total += 1
+                    if processed % 50 == 0:
+                        log(f'Processed: {processed}')
+                    if q in used:
+                        continue
+                    try:
+                        suggestions = get_suggestions(session, api_url, q, **api_params)
+                    except ConnectionResetError:
+                        suggestions = 666
+                    if not suggestions:
+                        continue
+                    if isinstance(suggestions, int):
+                        log(f'Code: {suggestions}. Processed with {ip}: {processed}')
+                        log('Refreshing IP...')
+                        if not isinstance(queued_query, list):
+                            queries.insert(0, queued_query)
+                        queries.insert(0, q)
+                        processed -= 1
+                        processed_total -= 1
+                        return queries, processed_total
+                    with open(output_filename, 'a', newline='', encoding='utf-8') as f:
+                        DictWriter(f, FIELDNAMES, delimiter=DELIMITER).writerows(
+                            [{'Query': q, 'Suggestion': s} for s in suggestions])
+                    queries.extend(suggestions)
+                    queries.append(get_combinations(q, symbols, repeats))
+                    used.append(q)
             return queries, processed_total
-        log(f'Starting with IP: {ip}')
-        processed = 0
-        while queries:
-            queued_query = queries.pop(0)
-            if isinstance(queued_query, str):
-                queued_query = [queued_query]
-            for q in queued_query:
-                processed += 1
-                processed_total += 1
-                if processed % 50 == 0:
-                    log(f'Processed: {processed}')
-                if q in used:
-                    continue
-                suggestions = get_suggestions(session, api_url, q, **api_params)
-                if not suggestions:
-                    continue
-                if isinstance(suggestions, int):
-                    log(f'Code: {suggestions}. Processed with {ip}: {processed}')
-                    log('Refreshing IP...')
-                    if not isinstance(queued_query, list):
-                        queries.insert(0, queued_query)
-                    queries.insert(0, q)  # проверить!
-                    processed -= 1
-                    processed_total -= 1
-                    return queries, processed_total
-                with open(output_filename, 'a', newline='', encoding='utf-8') as f:
-                    DictWriter(f, FIELDNAMES, delimiter=DELIMITER).writerows(
-                        [{'Query': q, 'Suggestion': s} for s in suggestions])
-                queries.extend(suggestions)
-                queries.append(get_combinations(q, symbols, repeats))
-                used.append(q)
+    except ConnectionResetError:
         return queries, processed_total
