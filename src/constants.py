@@ -3,3 +3,4 @@ DEFAULT_API_PARAMS = {'output': 'toolbar'}
 MAX_REPEATS = 10
 FIELDNAMES = ['Query', 'Suggestion']
 DELIMITER = ';'
+THREADS_FOLDER = 'threads'

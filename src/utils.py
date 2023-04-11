@@ -1,3 +1,4 @@
+import os.path
 from csv import DictWriter
 from datetime import datetime
 from itertools import product
@@ -6,7 +7,7 @@ from lxml import etree
 from requests import ConnectTimeout, ReadTimeout
 from torpy.http.requests import tor_requests_session
 
-from src.constants import MAX_REPEATS, FIELDNAMES, DELIMITER
+from src.constants import MAX_REPEATS, FIELDNAMES, DELIMITER, THREADS_FOLDER
 from src.exceptions import *
 
 
@@ -20,6 +21,11 @@ def get_time():
 
 def get_time_from_secs(secs: int):
     return ':'.join([str(n).rjust(2, '0') for n in [secs // 3600, secs // 60 % 60, secs % 60]])
+
+
+def number_filename(filename: str, n: int):
+    parts = filename.split('.')
+    return f'{".".join(parts[:-1])}{n}.{parts[-1]}'
 
 
 def get_tree(session, url: str, **params):
@@ -56,22 +62,28 @@ def get_combinations(text: str, symbols: str, repeats: int):  # mode: str = 'bef
                 yield ' '.join(a0)
 
 
-def log(message: str, logs_filename: str = 'logs.txt'):
+def log(message: str, logs_filename: str = 'logs.txt', thread_number: int = None):
     t = get_time()
-    print(f'[{t}] {message}')
+    print(f'[{t}]{f" <Thread {thread_number}> " if thread_number else " "}{message}')
+    if thread_number:
+        logs_filename = os.path.join(THREADS_FOLDER, number_filename(logs_filename, thread_number))
     with open(logs_filename, 'a', encoding='utf-8') as f:
         print(f'[{t}] {message}', file=f)
 
 
 def process(queries: list, symbols: str, repeats: int, used: list, processed_total: int,
-            api_url: str, output_filename: str, api_params: dict = None):
+            api_url: str, output_filename: str, api_params: dict = None,
+            thread_number: int = None):
+    if thread_number:
+        output_filename = os.path.join(
+            THREADS_FOLDER, number_filename(output_filename, thread_number))
     try:
         with tor_requests_session() as session:
             try:
                 ip = get_ip(session)
             except (ConnectTimeout, ReadTimeout):
                 return queries, processed_total
-            log(f'Starting with IP: {ip}')
+            log(f'Starting with IP: {ip}', thread_number=thread_number)
             processed = 0
             while queries:
                 queued_query = queries.pop(0)
@@ -81,7 +93,7 @@ def process(queries: list, symbols: str, repeats: int, used: list, processed_tot
                     processed += 1
                     processed_total += 1
                     if processed % 50 == 0:
-                        log(f'Processed: {processed}')
+                        log(f'Processed: {processed}', thread_number=thread_number)
                     if q in used:
                         continue
                     try:
@@ -91,8 +103,9 @@ def process(queries: list, symbols: str, repeats: int, used: list, processed_tot
                     if not suggestions:
                         continue
                     if isinstance(suggestions, int):
-                        log(f'Code: {suggestions}. Processed with {ip}: {processed}')
-                        log('Refreshing IP...')
+                        log(f'Code: {suggestions}. Processed with {ip}: {processed}',
+                            thread_number=thread_number)
+                        log('Refreshing IP...', thread_number=thread_number)
                         if not isinstance(queued_query, list):
                             queries.insert(0, queued_query)
                         queries.insert(0, q)
