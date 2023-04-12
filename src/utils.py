@@ -74,6 +74,7 @@ def log(message: str, logs_filename: str = 'logs.txt', thread_number: int = None
 def process(queries: list, symbols: str, repeats: int, used: list, processed_total: int,
             api_url: str, output_filename: str, api_params: dict = None,
             thread_number: int = None):
+    further_queries = []
     if thread_number:
         output_filename = os.path.join(
             THREADS_FOLDER, number_filename(output_filename, thread_number))
@@ -111,13 +112,13 @@ def process(queries: list, symbols: str, repeats: int, used: list, processed_tot
                         queries.insert(0, q)
                         processed -= 1
                         processed_total -= 1
-                        return queries, processed_total
+                        return queries, processed_total, further_queries
                     with open(output_filename, 'a', newline='', encoding='utf-8') as f:
                         DictWriter(f, FIELDNAMES, delimiter=DELIMITER).writerows(
                             [{'Query': q, 'Suggestion': s} for s in suggestions])
-                    queries.extend(suggestions)
-                    queries.append(get_combinations(q, symbols, repeats))
+                    further_queries.extend(suggestions)
+                    further_queries.append(get_combinations(q, symbols, repeats))
                     used.append(q)
-            return queries, processed_total
+            return queries, processed_total, further_queries
     except ConnectionResetError:
-        return queries, processed_total
+        return queries, processed_total, further_queries
