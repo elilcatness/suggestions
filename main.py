@@ -49,7 +49,7 @@ def main():
     with open('logs.txt', 'w', encoding='utf-8') as f:
         print(f'[{get_time()}] The script has started', file=f)
     with open(queries_filename, encoding='utf-8') as f:
-        initial_queries = [x.strip() for x in f]
+        initial_queries = [x.strip().strip('\n') for x in f]
     if not initial_queries:
         raise Exception('Нет запросов')
     with open(symbols_filename, encoding='utf-8') as f:

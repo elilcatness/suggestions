@@ -29,7 +29,10 @@ def number_filename(filename: str, n: int):
 
 
 def get_tree(session, url: str, **params):
-    r = session.get(url, params=params)
+    try:
+        r = session.get(url, params=params)
+    except ConnectionResetError:
+        return 666
     if r.status_code != 200:
         return r.status_code
     return etree.fromstring(r.text) if r.text else None
@@ -40,7 +43,7 @@ def get_suggestions(session, url: str, q: str, **params):
     if isinstance(tree, int):
         return tree
     # noinspection PyUnresolvedReferences
-    return [x.strip() for x in tree.xpath('//suggestion/@data') if x != q]
+    return [x.strip().strip('\n') for x in tree.xpath('//suggestion/@data') if x != q]
 
 
 def get_combinations(text: str, symbols: str, repeats: int):  # mode: str = 'before'
