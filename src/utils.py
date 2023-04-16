@@ -31,7 +31,7 @@ def number_filename(filename: str, n: int):
 def get_tree(session, url: str, **params):
     try:
         r = session.get(url, params=params)
-    except ConnectionResetError:
+    except:
         return 666
     if r.status_code != 200:
         return r.status_code
@@ -85,8 +85,9 @@ def process(queries: list, symbols: str, repeats: int, used: list, processed_tot
         with tor_requests_session() as session:
             try:
                 ip = get_ip(session)
-            except (ConnectTimeout, ReadTimeout):
-                return queries, processed_total
+            except BaseException as e:
+                log(f'{[e.__class__.__name__]} Failed to get IP. Refreshing Proxy...', thread_number=thread_number)
+                return queries, processed_total, further_queries
             log(f'Starting with IP: {ip}', thread_number=thread_number)
             processed = 0
             while queries:
@@ -102,7 +103,7 @@ def process(queries: list, symbols: str, repeats: int, used: list, processed_tot
                         continue
                     try:
                         suggestions = get_suggestions(session, api_url, q, **api_params)
-                    except ConnectionResetError:
+                    except:
                         suggestions = 666
                     if not suggestions:
                         continue
@@ -123,5 +124,6 @@ def process(queries: list, symbols: str, repeats: int, used: list, processed_tot
                     further_queries.append(get_combinations(q, symbols, repeats))
                     used.append(q)
             return queries, processed_total, further_queries
-    except ConnectionResetError:
+    except BaseException as e:
+        log(f'{[e.__class__.__name__]} Failed to establish a Proxy connection. Retrying...', thread_number=thread_number)
         return queries, processed_total, further_queries

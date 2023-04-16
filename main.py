@@ -20,15 +20,18 @@ class Parser:
         self.processed = 0
         self.used = []
 
-    def job(self, queries: list, thread_n: int):
+    def job(self, queries: list, thread_n: int, chunk_n: int):
         filterwarnings(action='ignore')
+        processed_total = 0
         while queries:
             queries, processed, further_queries = process(
                 queries, self.symbols, self.repeats,
                 self.used, 0, API_URL,
                 self.output_filename, DEFAULT_API_PARAMS, thread_n)
             self.processed += processed
+            processed_total += processed
             self._queries += further_queries
+        log(f'<Thread {thread_n}> Finished Chunk #{chunk_n}. Processed: {processed_total}')
 
     def has_queries(self):
         return bool(self._queries)
@@ -91,7 +94,7 @@ def main():
         processes = []
         log(f'Starting Chunk #{chunks}. Threads: {count}')
         for i in range(count):
-            processes.append(Thread(target=parser.job, args=(queries[i::count], i + 1)))
+            processes.append(Thread(name=f'Thread {i + 1}', target=parser.job, args=(queries[i::count], i + 1, chunks)))
             processes[-1].start()
         for proc in processes:
             proc.join()
