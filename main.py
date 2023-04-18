@@ -94,7 +94,8 @@ def main():
         processes = []
         log(f'Starting Chunk #{chunks}. Threads: {count}')
         for i in range(count):
-            processes.append(Thread(name=f'Thread {i + 1}', target=parser.job, args=(queries[i::count], i + 1, chunks)))
+            processes.append(Thread(name=f'Thread {i + 1}', target=parser.job,
+                                    args=(queries[i::count], i + 1, chunks)))
             processes[-1].start()
         for proc in processes:
             proc.join()

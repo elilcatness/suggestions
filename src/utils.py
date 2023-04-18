@@ -2,17 +2,18 @@ import os.path
 from csv import DictWriter
 from datetime import datetime
 from itertools import product
+import requests
 
 from lxml import etree
 from requests import ConnectTimeout, ReadTimeout
 from torpy.http.requests import tor_requests_session
 
-from src.constants import MAX_REPEATS, FIELDNAMES, DELIMITER, THREADS_FOLDER
+from src.constants import MAX_REPEATS, FIELDNAMES, DELIMITER, THREADS_FOLDER, REQUEST_TIMEOUT
 from src.exceptions import *
 
 
 def get_ip(session):
-    return session.get('https://httpbin.org/ip').json().get('origin')
+    return session.get('https://httpbin.org/ip', timeout=REQUEST_TIMEOUT).json().get('origin')
 
 
 def get_time():
@@ -30,7 +31,7 @@ def number_filename(filename: str, n: int):
 
 def get_tree(session, url: str, **params):
     try:
-        r = session.get(url, params=params)
+        r = session.get(url, timeout=REQUEST_TIMEOUT, params=params)
     except:
         return 666
     if r.status_code != 200:
