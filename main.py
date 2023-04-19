@@ -8,7 +8,7 @@ from warnings import filterwarnings
 from dotenv import load_dotenv
 
 from src.constants import *
-from src.utils import log, get_time, get_time_from_secs, process, number_filename
+from src.utils import log, get_time, get_time_from_secs, process, number_filename, _strip
 
 
 class Parser:
@@ -52,11 +52,11 @@ def main():
     with open('logs.txt', 'w', encoding='utf-8') as f:
         print(f'[{get_time()}] The script has started', file=f)
     with open(queries_filename, encoding='utf-8') as f:
-        initial_queries = [x.strip().strip('\n') for x in f]
+        initial_queries = [x.strip() for x in f]
     if not initial_queries:
         raise Exception('Нет запросов')
     with open(symbols_filename, encoding='utf-8') as f:
-        symbols = f.read().strip()
+        symbols = _strip(f.read(), TRASH_SYMBOLS)
     repeats = None
     while repeats is None:
         try:

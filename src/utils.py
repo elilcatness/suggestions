@@ -2,13 +2,11 @@ import os.path
 from csv import DictWriter
 from datetime import datetime
 from itertools import product
-import requests
 
 from lxml import etree
-from requests import ConnectTimeout, ReadTimeout
 from torpy.http.requests import tor_requests_session
 
-from src.constants import MAX_REPEATS, FIELDNAMES, DELIMITER, THREADS_FOLDER, REQUEST_TIMEOUT
+from src.constants import MAX_REPEATS, FIELDNAMES, DELIMITER, THREADS_FOLDER, REQUEST_TIMEOUT, TRASH_SYMBOLS
 from src.exceptions import *
 
 
@@ -39,12 +37,20 @@ def get_tree(session, url: str, **params):
     return etree.fromstring(r.text) if r.text else None
 
 
+def _strip(s: str, symbols: dict = None):
+    symbols = symbols if symbols else dict()
+    s = s.strip()
+    for key, val in symbols.items():
+        s = s.replace(key, val)
+    return s
+
+
 def get_suggestions(session, url: str, q: str, **params):
     tree = get_tree(session, url, q=q, **params)
     if isinstance(tree, int):
         return tree
     # noinspection PyUnresolvedReferences
-    return [x.strip().strip('\n') for x in tree.xpath('//suggestion/@data') if x != q]
+    return [x.strip() for x in tree.xpath('//suggestion/@data') if x != q]
 
 
 def get_combinations(text: str, symbols: str, repeats: int):  # mode: str = 'before'
@@ -104,7 +110,7 @@ def process(queries: list, symbols: str, repeats: int, used: list, processed_tot
                         continue
                     try:
                         suggestions = get_suggestions(session, api_url, q, **api_params)
-                    except:
+                    except Exception as e:
                         suggestions = 666
                     if not suggestions:
                         continue
@@ -126,5 +132,6 @@ def process(queries: list, symbols: str, repeats: int, used: list, processed_tot
                     used.append(q)
             return queries, processed_total, further_queries
     except BaseException as e:
-        log(f'{[e.__class__.__name__]} Failed to establish a Proxy connection. Retrying...', thread_number=thread_number)
+        log(f'{[e.__class__.__name__]} Failed to establish a Proxy connection. Retrying...',
+            thread_number=thread_number)
         return queries, processed_total, further_queries
